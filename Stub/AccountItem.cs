@@ -12,17 +12,17 @@ namespace CSV2QFX.Stub
         public string AcctType { get; }
         public string AcctCurr { get; }
 
-        public AccountItem(string bankId, string accNo, string accType, string acctCurr)
+        public AccountItem(string bankId, string accNo, string acctType, string acctCurr)
         {
             BankId = bankId;
             AcctNo = accNo;
-            AcctType = accType;
+            AcctType = acctType;
             AcctCurr = acctCurr;
         }
 
         public override string ToString()
         {
-            return String.Format("{0} - {1}", AcctNo, AcctCurr);
+            return String.Format("{0} - {2} - {1}", AcctNo, AcctCurr, AcctType);
         }
     }
 }

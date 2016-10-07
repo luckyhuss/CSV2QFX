@@ -34,6 +34,8 @@ namespace CSV2QFX
             this.radLabel1 = new System.Windows.Forms.Label();
             this.radTextBoxCSVPath = new System.Windows.Forms.TextBox();
             this.radGroupBoxDrop = new System.Windows.Forms.GroupBox();
+            this.radLabelPreviousRunDate = new System.Windows.Forms.Label();
+            this.label2 = new System.Windows.Forms.Label();
             this.radLabelLastRunDate = new System.Windows.Forms.Label();
             this.radButtonLaunchQuicken = new System.Windows.Forms.Button();
             this.radLabel5 = new System.Windows.Forms.Label();
@@ -43,8 +45,6 @@ namespace CSV2QFX
             this.radDropDownListAccountNo = new System.Windows.Forms.ComboBox();
             this.radLabel2 = new System.Windows.Forms.Label();
             this.radButtonConvert = new System.Windows.Forms.Button();
-            this.radLabelPreviousRunDate = new System.Windows.Forms.Label();
-            this.label2 = new System.Windows.Forms.Label();
             this.radGroupBoxDrop.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -61,6 +61,7 @@ namespace CSV2QFX
             this.radTextBoxCSVPath.AllowDrop = true;
             this.radTextBoxCSVPath.Location = new System.Drawing.Point(93, 21);
             this.radTextBoxCSVPath.Name = "radTextBoxCSVPath";
+            this.radTextBoxCSVPath.ReadOnly = true;
             this.radTextBoxCSVPath.Size = new System.Drawing.Size(458, 20);
             this.radTextBoxCSVPath.TabIndex = 1;
             this.radTextBoxCSVPath.TabStop = false;
@@ -90,6 +91,24 @@ namespace CSV2QFX
             this.radGroupBoxDrop.Text = "Convert and Import";
             this.radGroupBoxDrop.DragEnter += new System.Windows.Forms.DragEventHandler(this.radGroupBoxDrop_DragEnter);
             this.radGroupBoxDrop.DragOver += new System.Windows.Forms.DragEventHandler(this.radGroupBoxDrop_DragOver);
+            // 
+            // radLabelPreviousRunDate
+            // 
+            this.radLabelPreviousRunDate.ForeColor = System.Drawing.Color.DarkGreen;
+            this.radLabelPreviousRunDate.Location = new System.Drawing.Point(445, 92);
+            this.radLabelPreviousRunDate.Name = "radLabelPreviousRunDate";
+            this.radLabelPreviousRunDate.Size = new System.Drawing.Size(103, 18);
+            this.radLabelPreviousRunDate.TabIndex = 11;
+            this.radLabelPreviousRunDate.Text = "N/A";
+            this.radLabelPreviousRunDate.Click += new System.EventHandler(this.radLabelPreviousRunDate_Click);
+            // 
+            // label2
+            // 
+            this.label2.Location = new System.Drawing.Point(322, 92);
+            this.label2.Name = "label2";
+            this.label2.Size = new System.Drawing.Size(99, 18);
+            this.label2.TabIndex = 10;
+            this.label2.Text = "Previous run date : ";
             // 
             // radLabelLastRunDate
             // 
@@ -168,24 +187,6 @@ namespace CSV2QFX
             this.radButtonConvert.TabIndex = 2;
             this.radButtonConvert.Text = "Convert to QFX && Import in Quicken";
             this.radButtonConvert.Click += new System.EventHandler(this.radButtonConvert_Click);
-            // 
-            // radLabelPreviousRunDate
-            // 
-            this.radLabelPreviousRunDate.ForeColor = System.Drawing.Color.DarkGreen;
-            this.radLabelPreviousRunDate.Location = new System.Drawing.Point(445, 92);
-            this.radLabelPreviousRunDate.Name = "radLabelPreviousRunDate";
-            this.radLabelPreviousRunDate.Size = new System.Drawing.Size(103, 18);
-            this.radLabelPreviousRunDate.TabIndex = 11;
-            this.radLabelPreviousRunDate.Text = "N/A";
-            this.radLabelPreviousRunDate.Click += new System.EventHandler(this.radLabelPreviousRunDate_Click);
-            // 
-            // label2
-            // 
-            this.label2.Location = new System.Drawing.Point(322, 92);
-            this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(99, 18);
-            this.label2.TabIndex = 10;
-            this.label2.Text = "Previous run date : ";
             // 
             // RadFormMain
             // 

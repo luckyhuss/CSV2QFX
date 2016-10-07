@@ -50,6 +50,7 @@ namespace CSV2QFX
             // if fuelly CSV generating
             var isFuelly = bankId.Equals(_fuelly, StringComparison.InvariantCultureIgnoreCase);
 
+            #region QFX Header
             sbQfx.AppendLine("OFXHEADER:100");
             sbQfx.AppendLine("DATA:OFXSGML");
             sbQfx.AppendLine("VERSION:102");
@@ -110,6 +111,7 @@ namespace CSV2QFX
                 String.Format("					<DTSTART>{0}", dateToday));
             sbQfx.AppendLine(
                 String.Format("					<DTEND>{0}", dateToday));
+            #endregion
 
             // TRANSACTIONS
             // READ CSV
@@ -118,13 +120,16 @@ namespace CSV2QFX
                 File.ReadAllText(radTextBoxCSVPath.Text, Encoding.Default);
 
             // replace all digit separator in CSV
-            Regex amount = new Regex(@"\d+,\d+[.]\d+", RegexOptions.Multiline);
+            Regex amount = new Regex(@"""-*\d+,\d+[.]\d{2} *""", RegexOptions.Multiline);
 
             foreach(Match match in amount.Matches(csvImport))
             {
-                csvImport = csvImport.Replace(match.Value, match.Value.Replace(UtilityQfx.DigitSeparator.ToString(), string.Empty));
+                // replace , by empty and <space> by empty
+                csvImport = csvImport.Replace(match.Value, 
+                    match.Value.Replace(UtilityQfx.DigitSeparator.ToString(), string.Empty).Replace(' '.ToString(), string.Empty));
             }
 
+            // replace all " by empty
             csvImport = csvImport.Replace('"'.ToString(), string.Empty);
 
             var csvLines = csvImport.Split(
@@ -143,7 +148,7 @@ namespace CSV2QFX
             {
                 // if (String.IsNullOrWhiteSpace(csvLine)) continue; // no more required
 
-                var csvValues = csvLine.Replace("\r", String.Empty).Split(_isManual ? UtilityQfx.ManualCsvSeparator : UtilityQfx.CsvSeparator);
+                var csvValues = csvLine.Replace("\r", string.Empty).Split(_isManual ? UtilityQfx.ManualCsvSeparator : UtilityQfx.CsvSeparator);
                 if (csvValues.Length <= 2 && !isFuelly) continue;
 
                 // shared variables within the scope of "switch"
@@ -153,22 +158,24 @@ namespace CSV2QFX
 
                 switch (bankId)
                 {
+                    #region SBM
                     case "SBM":
 
+                        #region CREDITLINE
                         if (acctType.Equals("CREDITLINE"))
                         {
-                            // Transaction Reference No;Transaction Date;Transaction Post Date;Transaction Description;Transaction Currency;Amount
-                            // 714215712;14/07/2006;14/07/2006;MEMBERSHIP FEE ASSESSED;MUR;230.00
-                            // 731211517;29/07/2006;31/07/2006;PAYMENT;MUR;230.00CR
+                            // Transaction Number,Transaction Date,Posted Date,,Amount in Billing Currency,Original Currency,Original Amount,Nature Of Transaction,Transaction Remarks
+                            // 100782751480,28-09-2016,28-09-2016,,-20,000.00",MUR,-20,000.00, Payments to account,Payment
+                            // 283730284   ,26-09-2016,28-09-2016,,518.77  ,MUR,518.77  ,205,SHOPRITE LTD QUATRE BORNES ZAF
                             // FITID format : yyyyMMdd_<Ref no.>_<1st word of desc>_<TRNAMT>_<TRNTYPE>
 
-                            trnType = csvValues[5].Contains("CR") ? "CREDIT" : "DEBIT";
-                            trnAmt = csvValues[5].Contains("CR")
-                                         ? csvValues[5].Replace("CR", String.Empty)
-                                         : String.Concat("-", csvValues[5]);
+                            trnType = csvValues[4].Contains("-") ? "CREDIT" : "DEBIT";
+                            trnAmt = csvValues[4].Contains("-")
+                                         ? csvValues[4].Replace("-", string.Empty)
+                                         : String.Concat("-", csvValues[4]);
 
                             // check if not header
-                            if (!DateTime.TryParse(csvValues[2], out dtposted)) continue;
+                            if (!DateTime.TryParse(csvValues[1], out dtposted)) continue;
 
                             // valid line
                             // STMTTRN
@@ -178,28 +185,31 @@ namespace CSV2QFX
                             sbQfx.AppendLine(
                                 String.Format("						<DTPOSTED>{0}", dtposted.ToString(dateFormatQfx)));
                             sbQfx.AppendLine(
-                                String.Format("						<TRNAMT>{0}", trnAmt));
+                                String.Format("						<TRNAMT>{0}", trnAmt.Trim()));
                             sbQfx.AppendLine(
                                 String.Format("						<FITID>{0}_{1}_{2}_{3}_{4}",
                                               dtposted.ToString(dateFormatQfx),
-                                              String.IsNullOrWhiteSpace(csvValues[0]) ? "NIL" : csvValues[0],
-                                              csvValues[3].Split(' ')[0].ToUpper(),
-                                              trnAmt,
+                                              String.IsNullOrWhiteSpace(csvValues[0]) ? "NIL" : csvValues[0].Trim(),
+                                              csvValues[8].Replace(" ", String.Empty).ToUpper().ToUpper(),
+                                              trnAmt.Trim(),
                                               trnType));
                             sbQfx.AppendLine(
                                 String.Format("						<MEMO>{0}", RenameAccountNameMemo(csvValues[3])));
                             sbQfx.AppendLine("					</STMTTRN>");
                         }
+                        #endregion
+
+                        #region CASE ACCOUNTS
                         else
                         {
-                            // Txn Date, Reference No., Description - Instruction No., Debit, Credit, Running Balance
-                            // 24/03/2013,3374,ATM CASH WITHDRAWAL FROM CASA ON-US,3000,,164705.64
-                            // FITID format : yyyyMMdd_<Ref no.>_<1st word of desc>_<TRNAMT>_<TRNTYPE>
+                            //Instrument ID, Transaction Date,Value Date, Source Branch Code,, Transaction Remarks,Debit Amount, Credit Amount,Running Balance                            
+                            //,04-10-2016,04-10-2016,PORT LOUIS,, NANDO'S NON SBM POS,705.00,,5645.35
+                            // FITID format : yyyyMMdd_<Source branch.>_<1st word of desc>_<TRNAMT>_<TRNTYPE>
 
-                            trnType = String.IsNullOrWhiteSpace(csvValues[3]) ? "CREDIT" : "DEBIT";
-                            trnAmt = String.IsNullOrWhiteSpace(csvValues[3])
-                                         ? csvValues[4]
-                                         : String.Concat("-", csvValues[3]);
+                            trnType = String.IsNullOrWhiteSpace(csvValues[6]) ? "CREDIT" : "DEBIT";
+                            trnAmt = String.IsNullOrWhiteSpace(csvValues[6])
+                                         ? csvValues[7]
+                                         : String.Concat("-", csvValues[6]);
 
                             if (trnType.Equals("DEBIT") && trnAmt.Contains("--"))
                             {
@@ -210,7 +220,7 @@ namespace CSV2QFX
                             }
 
                             // check if not header
-                            if (!DateTime.TryParse(csvValues[0], out dtposted)) continue;
+                            if (!DateTime.TryParse(csvValues[1], out dtposted)) continue;
 
                             // valid line
                             // STMTTRN
@@ -220,27 +230,30 @@ namespace CSV2QFX
                             sbQfx.AppendLine(
                                 String.Format("						<DTPOSTED>{0}", dtposted.ToString(dateFormatQfx)));
                             sbQfx.AppendLine(
-                                String.Format("						<TRNAMT>{0}", trnAmt));
+                                String.Format("						<TRNAMT>{0}", trnAmt.Trim()));
                             sbQfx.AppendLine(
                                 String.Format("						<FITID>{0}_{1}_{2}_{3}_{4}",
                                               dtposted.ToString(dateFormatQfx),
-                                              String.IsNullOrWhiteSpace(csvValues[1]) ? "NIL" : csvValues[1],
-                                              csvValues[2].Split(' ')[0].ToUpper(),
-                                              trnAmt,
+                                              String.IsNullOrWhiteSpace(csvValues[3]) ? "NIL" : csvValues[3].Replace(" ", String.Empty).ToUpper(),
+                                              csvValues[5].Replace(" ", String.Empty).ToUpper(),
+                                              trnAmt.Trim(),
                                               trnType));
                             sbQfx.AppendLine(
                                 String.Format("						<MEMO>{0}", RenameAccountNameMemo(csvValues[2])));
                             sbQfx.AppendLine("					</STMTTRN>");
                         }
+                        #endregion
                         break;
+                    #endregion
+                    
+                    #region MCB
                     case "MCB":
-                        // Transaction Date,Value Date,Reference,Description,Money out (Debit),Money in (Credit),Balance                        
-                        // 24-Jun-2016,24-Jun-2016,FT161767FHSQ\BNK,Debit Card Purchase WINNERS ST PAUL,"956.81","0.00","40,764.39"
-                        // NEW -> 24-Jun-2016,24-Jun-2016,FT161767FHSQ\BNK,Debit Card Purchase WINNERS ST PAUL,956.81,0.00,40764.39
+                        // Transaction Date,Value Date,Reference,Description,Money out,Money in,Balance
+                        // 24-Jun-2016,24-Jun-2016,FT161767FHSQ\BNK,Debit Card Purchase WINNERS ST PAUL,956.81,0.00,40764.39
                         // FITID format : yyyyMMdd_<Ref>_<1st word of desc>_<TRNAMT>_<TRNTYPE>
 
                         trnType = "0.00".Equals(csvValues[4]) ? "CREDIT" : "DEBIT";
-                        trnAmt = "0.00".Equals(csvValues[4]) ? csvValues[5] : String.Concat("-", csvValues[4]);                        
+                        trnAmt = "0.00".Equals(csvValues[4]) ? csvValues[5] : String.Concat("-", csvValues[4]);
 
                         // check if not header
                         if (!DateTime.TryParse(csvValues[0], out dtposted)) continue;
@@ -253,18 +266,21 @@ namespace CSV2QFX
                         sbQfx.AppendLine(
                             String.Format("						<DTPOSTED>{0}", dtposted.ToString(dateFormatQfx)));
                         sbQfx.AppendLine(
-                            String.Format("						<TRNAMT>{0}", trnAmt));
+                            String.Format("						<TRNAMT>{0}", trnAmt.Trim()));
                         sbQfx.AppendLine(
                             String.Format("						<FITID>{0}_{1}_{2}_{3}_{4}",
                                 dtposted.ToString(dateFormatQfx),
                                 String.IsNullOrWhiteSpace(csvValues[2]) ? "NIL" : csvValues[2].Replace(" ", String.Empty).ToUpper(),
-                                csvValues[3].Split(' ')[0].ToUpper(),
-                                trnAmt,
+                                csvValues[3].Replace(" ", String.Empty).ToUpper(),
+                                trnAmt.Trim(),
                                 trnType));
                         sbQfx.AppendLine(
                             String.Format("						<MEMO>{0}", RenameAccountNameMemo(csvValues[3])));
                         sbQfx.AppendLine("					</STMTTRN>");
                         break;
+                    #endregion
+                    
+                    #region CIM
                     case "CIM":
 
                         //Post Date;Trans Date;Merchant ID;Transaction Type;Transaction Desc;Debit;Credit
@@ -306,6 +322,9 @@ namespace CSV2QFX
                                     String.IsNullOrWhiteSpace(csvValues[3]) ? "PAYMENT" : csvValues[3])));
                         sbQfx.AppendLine("					</STMTTRN>");
                         break;
+                    #endregion
+                    
+                    #region FUELLY
                     case _fuelly:
 
                         // output format
@@ -335,7 +354,7 @@ namespace CSV2QFX
                         if (lineValues.Length <= 1) continue;
 
                         var indexOfUX = Array.FindIndex(lineValues, value => value.Contains("UX"));
-                        
+
                         // fuelup_date
                         var datetime = lineValues[0];
 
@@ -387,7 +406,7 @@ namespace CSV2QFX
                             notes += String.Concat(lineValues[i], shellPDFSeparator);
                         }
                         notes = notes.Trim();
-                        
+
                         string litres = String.Empty;
                         decimal totalPrice = 0;
                         decimal pricePerLitre;
@@ -428,7 +447,7 @@ namespace CSV2QFX
 
                             // price per litre
                             pricePerLitre = totalPrice / Convert.ToDecimal(litres);
-                            
+
                             // 30/06/2014 - Fuelly has fixed the currency bug I reported in May 2014
                             //var denominator = Convert.ToInt32(Math.Floor(price / 10)) * 10;
                             //price = price - denominator;
@@ -444,14 +463,14 @@ namespace CSV2QFX
 
                             // price
                             pricePerLitre = Convert.ToDecimal(lineValues[indexOfUX + 1]) / Convert.ToDecimal(litres);
-                            
+
                             // 30/06/2014 - Fuelly has fixed the currency bug I reported in May 2014
                             //var denominator = Convert.ToInt32(Math.Floor(price / 10)) * 10;
                             //price = price - denominator;
 
                             // odometer
                             odometer = lineValues[indexOfUX + 4];
-                        }                       
+                        }
 
                         // city_percentage                        
                         var city_percentage = 75;
@@ -470,6 +489,7 @@ namespace CSV2QFX
                         sbQfx.AppendLine(csvLineToOutput);
 
                         break;
+                        #endregion                    
                 } // end switch bankId
             } // end foreach
 
@@ -494,46 +514,31 @@ namespace CSV2QFX
             }
 
             if (String.IsNullOrWhiteSpace(radTextBoxCSVPath.Text) && !_isManual) return;
+            
+            var filenameQfx = Path.Combine(_pathQfx,
+            String.Format("{0}_{1}.qfx", acctNo, dateToday));
 
-            var filenameQfx = String.Empty;
+            File.Delete(filenameQfx);
 
-            if (isFuelly)
+            using (var fs = File.OpenWrite(filenameQfx))
             {
-                filenameQfx = Path.Combine(_pathFuellyLog, 
-                    String.Format("{0}_{1}.csv", acctNo, dateToday));                
-
-                // write all data
-                File.AppendAllText(filenameQfx, sbQfx.ToString(), Encoding.Default);
-
-                MessageBox.Show(@"Fuelly CSV has been successfully generated.");
-
-                return;
-            }
-            else
-            {
-                filenameQfx = Path.Combine(_pathQfx,
-                String.Format("{0}_{1}.qfx", acctNo, dateToday));
-
-                using (var fs = File.OpenWrite(filenameQfx))
+                using (var writer = new StreamWriter(fs))
                 {
-                    using (var writer = new StreamWriter(fs))
-                    {
-                        writer.Write(sbQfx.ToString());
-                    }
+                    writer.Write(sbQfx.ToString());
                 }
             }
-            
+
             // import into Quicken
-            //Process.Start(filenameQfx);
+            //TODO: Process.Start(filenameQfx);
 
             _isManual = false;
 
             MessageBox.Show(@"Import into Quicken has been launched.");
-            
+
+            #region Update settings.ini
             // update last run date
             var today = DateTime.Today.ToString("dd/MM/yyyy");
-
-            if(!_settings["lastrundate"].Equals(today))
+            if (!_settings["lastrundate"].Equals(today))
             {
                 radLabelPreviousRunDate.Text = radLabelLastRunDate.Text;
                 _settings["previousrundate"] = radLabelPreviousRunDate.Text;
@@ -541,9 +546,10 @@ namespace CSV2QFX
                 radLabelLastRunDate.Text = today;
                 _settings["lastrundate"] = radLabelLastRunDate.Text;
             }
-            
+
             // upate settings.ini file
-            WriteSettings();
+            //TODO: WriteSettings(); 
+            #endregion
         }
 
         private void WriteSettings()
@@ -560,7 +566,6 @@ namespace CSV2QFX
         private static string RenameAccountNameMemo(string originalMemo)
         {
             return originalMemo;
-
             //return originalMemo.
             //    Replace("00110100207295", "ACC7295").
             //    Replace("03136200005044", "ACC5044").
@@ -572,27 +577,57 @@ namespace CSV2QFX
             var buffer = e.Data.GetData(DataFormats.FileDrop, false) as string[];
             if (buffer != null)
             {
-                radTextBoxCSVPath.Text = buffer.First();
+                radTextBoxCSVPath.Text = buffer.FirstOrDefault();
             }
 
             if (String.IsNullOrWhiteSpace(radTextBoxCSVPath.Text)) return;
 
-            var fileName = Path.GetFileNameWithoutExtension(radTextBoxCSVPath.Text.Trim());
+            var fileName = Path.GetFileNameWithoutExtension(radTextBoxCSVPath.Text);
             var ext = Path.GetExtension(radTextBoxCSVPath.Text.Trim());
 
-            if (fileName != null && fileName.Length > 14
-                && ext.Equals(".csv", StringComparison.InvariantCultureIgnoreCase))
+            if (fileName != null && ext.Equals(".csv", StringComparison.InvariantCultureIgnoreCase))
             {
-                // SBM Bank file - CSV
-                var acctNo = fileName.Substring(fileName.Length - 14);
+                // load file content
+                var fileContent = File.ReadAllText(radTextBoxCSVPath.Text, Encoding.Default);
+                var acctNo = String.Empty;
 
-                foreach (var item in radDropDownListAccountNo.Items)
+                // parse content to get account number
+                Regex accountNumberMCB = new Regex(@"(Account Number)\s(?<acc>\d+)", RegexOptions.Multiline);
+                Regex accountNumberSBM = new Regex(@"(Transaction).*(?<acc>\d{14})", RegexOptions.Multiline);
+
+                if (accountNumberMCB.IsMatch(fileContent))
                 {
-                    if (item is AccountItem && ((AccountItem)item).AcctNo.Equals(acctNo))
+                    // MCB account found
+                    var match = accountNumberMCB.Match(fileContent);
+                    acctNo = match.Groups["acc"].Value;
+                }
+                else if (accountNumberSBM.IsMatch(fileContent))
+                {
+                    // SBM account found
+                    var match = accountNumberSBM.Match(fileContent);
+                    acctNo = match.Groups["acc"].Value;
+                }
+
+                if (!String.IsNullOrEmpty(acctNo))
+                {
+                    foreach (var item in radDropDownListAccountNo.Items)
                     {
-                        radDropDownListAccountNo.SelectedItem = item;
-                        break;
+                        if (item is AccountItem && (((AccountItem)item).AcctNo.Equals(acctNo)))
+                        {
+                            radDropDownListAccountNo.SelectedItem = item;
+                            break;
+                        }
+                        else if (item is AccountItem && (((AccountItem)item).AcctNo.Equals("CREDITCARD01") && acctNo.Contains("7712")))
+                        {
+                            //  CREDITLINE
+                            radDropDownListAccountNo.SelectedItem = item;
+                        }
                     }
+                }
+                else
+                {
+                    // clear data
+                    radDropDownListAccountNo.SelectedIndex = -1;
                 }
             }
             else
