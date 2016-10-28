@@ -194,7 +194,7 @@ namespace CSV2QFX
                                               trnAmt.Trim(),
                                               trnType));
                             sbQfx.AppendLine(
-                                String.Format("						<MEMO>{0}", RenameAccountNameMemo(csvValues[3])));
+                                String.Format("						<MEMO>{0}", RenameAccountNameMemo(csvValues[8])));
                             sbQfx.AppendLine("					</STMTTRN>");
                         }
                         #endregion
