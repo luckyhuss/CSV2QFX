@@ -156,6 +156,7 @@ namespace CSV2QFX
             // 
             // radButtonManualInput
             // 
+            this.radButtonManualInput.Enabled = false;
             this.radButtonManualInput.Location = new System.Drawing.Point(164, 136);
             this.radButtonManualInput.Name = "radButtonManualInput";
             this.radButtonManualInput.Size = new System.Drawing.Size(110, 24);

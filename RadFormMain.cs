@@ -199,7 +199,7 @@ namespace CSV2QFX
                         }
                         #endregion
 
-                        #region CASE ACCOUNTS
+                        #region CASA ACCOUNTS
                         else
                         {
                             //Instrument ID, Transaction Date,Value Date, Source Branch Code,, Transaction Remarks,Debit Amount, Credit Amount,Running Balance                            
@@ -239,7 +239,7 @@ namespace CSV2QFX
                                               trnAmt.Trim(),
                                               trnType));
                             sbQfx.AppendLine(
-                                String.Format("						<MEMO>{0}", RenameAccountNameMemo(csvValues[2])));
+                                String.Format("						<MEMO>{0}", RenameAccountNameMemo(csvValues[5])));
                             sbQfx.AppendLine("					</STMTTRN>");
                         }
                         #endregion
@@ -529,7 +529,7 @@ namespace CSV2QFX
             }
 
             // import into Quicken
-            //TODO: Process.Start(filenameQfx);
+            Process.Start(filenameQfx);
 
             _isManual = false;
 
@@ -547,8 +547,8 @@ namespace CSV2QFX
                 _settings["lastrundate"] = radLabelLastRunDate.Text;
             }
 
-            // upate settings.ini file
-            //TODO: WriteSettings(); 
+            // update settings.ini file
+            WriteSettings();
             #endregion
         }
 
